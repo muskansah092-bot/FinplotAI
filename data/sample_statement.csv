@@ -1,0 +1,5 @@
+Date,Description,Amount,Type
+2026-01-01,Salary,50000,Credit
+2026-01-03,Amazon,-1500,Debit
+2026-01-05,Electricity,-2300,Debit
+2026-01-10,Rent,-12000,Debit
