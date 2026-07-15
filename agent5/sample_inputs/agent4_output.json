@@ -1,0 +1,17 @@
+{
+  "risk_profile": "Moderate",
+  "recommended_portfolio": {
+    "equity_percentage": 50,
+    "debt_percentage": 35,
+    "gold_percentage": 10,
+    "cash_percentage": 5
+  },
+  "expected_annual_return_percentage": 10.5,
+  "investment_horizon_years": 5,
+  "suggested_instruments": [
+    "Index Mutual Funds",
+    "Public Provident Fund (PPF)",
+    "Gold ETF",
+    "Fixed Deposit"
+  ]
+}

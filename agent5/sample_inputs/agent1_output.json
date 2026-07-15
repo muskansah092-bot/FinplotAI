@@ -1,0 +1,16 @@
+{
+  "name": "Rahul Sharma",
+  "age": 29,
+  "monthly_income": 65000,
+  "monthly_expenses": 42000,
+  "dependents": 1,
+  "employment_type": "Salaried",
+  "existing_loans": [
+    {
+      "loan_type": "Car Loan",
+      "outstanding_amount": 150000,
+      "monthly_emi": 6000
+    }
+  ],
+  "monthly_savings": 17000
+}
