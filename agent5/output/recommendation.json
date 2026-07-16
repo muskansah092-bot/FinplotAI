@@ -1,0 +1,42 @@
+{
+    "overall_score": 65,
+    "financial_summary": "Rahul is a 29-year-old salaried professional with a stable income and a healthy savings rate, but his financial foundation is vulnerable due to an inadequate emergency fund and a dependent to support. While his debt-to-income ratio of 28% is manageable, he must prioritize risk management through insurance and emergency savings before focusing heavily on long-term wealth creation.",
+    "priority_actions": [
+        "Commit 9,500 INR monthly towards the Emergency Fund to reach the 250,000 INR target and secure a 6-month buffer.",
+        "Secure adequate Term Life Insurance (10-15x annual income) and Health Insurance to protect his dependent.",
+        "Optimize discretionary spending in the 'entertainment' and 'others' categories to free up an additional 2,000 INR monthly.",
+        "Allocate the remaining 7,500 INR of monthly savings into a Moderate-risk investment portfolio (50% Equity, 35% Debt, 10% Gold, 5% Cash)."
+    ],
+    "monthly_action_plan": [
+        {
+            "month": 1,
+            "action": "Set up an automated monthly transfer of 9,500 INR into a separate high-yield savings account or liquid fund dedicated solely to the Emergency Fund."
+        },
+        {
+            "month": 2,
+            "action": "Research and purchase a comprehensive Term Life Insurance policy and a family floater Health Insurance policy for self and dependent."
+        },
+        {
+            "month": 3,
+            "action": "Perform a detailed audit of the 8,000 INR discretionary expenses, identifying and eliminating unused subscriptions and impulse spending."
+        },
+        {
+            "month": 4,
+            "action": "Initiate automated SIPs of 7,500 INR in Index Mutual Funds and PPF to build a balanced, moderate-risk investment portfolio."
+        },
+        {
+            "month": 5,
+            "action": "Check car loan prepayment terms to see if making lump-sum payments towards the 150,000 INR balance is viable without penalties."
+        },
+        {
+            "month": 6,
+            "action": "Conduct a mid-year financial review to track emergency fund progress, monitor budget compliance, and ensure investment asset allocation is on target."
+        }
+    ],
+    "recommendations": [
+        "Maintain strict separation between emergency reserves, short-term savings, and long-term investment accounts to prevent accidental spending.",
+        "Implement the 50/30/20 budget framework, keeping needs under 50% and allocating at least 20% systematically to savings.",
+        "Automate all investment and savings transfers to occur immediately after salary credit to enforce disciplined financial habits.",
+        "Commit to directing at least 50% of any future salary increments toward savings and debt prepayment to counteract lifestyle inflation."
+    ]
+}
