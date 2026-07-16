@@ -1,0 +1,13 @@
+{
+    "goal": "Laptop",
+    "target_amount": 80000.0,
+    "timeline_months": 10,
+    "monthly_saving_required": 8000.0,
+    "goal_feasible": false,
+    "recommended_saving": 6300.0,
+    "expense_reductions": [
+        "Reduce discretionary shopping expenditure by at least 40% (Target reduction: ~8,800/month)",
+        "Optimize food/dining budget through meal planning and limiting external food intake"
+    ],
+    "roadmap": "Phase 1 (Month 1): Immediate audit of shopping habits and implementation of the 'pay yourself first' strategy to divert 6,300 toward a dedicated high-yield savings account. Phase 2 (Months 2-6): Maintain strict shopping controls; divert the targeted 8,800 monthly reduction into savings to accelerate progress. Phase 3 (Months 7-12): Extend the timeline to 13 months to account for the current 1,695 disposable income limitation, reaching the 80,000 goal with total monthly contributions of 6,300 (current surplus + reduced shopping costs). By month 13, you will reach the target without compromising essential financial stability."
+}
