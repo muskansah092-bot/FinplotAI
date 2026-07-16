@@ -9,24 +9,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Import your execution pipeline directly from the local folder
 from savings_planner import run_agent3_pipeline
 
-# Mock data reflecting outputs from Agent 1 and Agent 2
-mock_agent1_data = {
-    "income": 50000, 
-    "expense": 36000, 
-    "food": 8500, 
-    "shopping": 7000, 
-    "subscriptions": 1800, 
-    "emi": 6000, 
-    "disposable_income": 14000
-}
-
-mock_agent2_data = {
-    "financial_score": 68, 
-    "health_level": "Average", 
-    "strengths": ["Stable income", "Low EMI"], 
-    "weaknesses": ["Low savings", "High shopping", "Frequent food delivery"]
-}
-
+# Isolated User Intent payload for the Laptop Goal
 mock_user_intent = {
     "goal": "Laptop", 
     "target_amount": 80000, 
@@ -35,7 +18,7 @@ mock_user_intent = {
 
 def execute_local_agent_test():
     print("=" * 70)
-    print("  RUNNING LOCAL AGENT 3 ISOLATED TEST PANEL  ")
+    print("   RUNNING LOCAL AGENT 3 INTEGRATED TEST PANEL  ")
     print("=" * 70)
     
     if not os.environ.get("GEMINI_API_KEY"):
@@ -43,23 +26,179 @@ def execute_local_agent_test():
         print("-> Please run your environment export/set command first.\n")
         return
 
-    print("[INFO] Triggering calculations and LLM workflow inside agent3 folder...\n")
+    # --- DYNAMIC WORKSPACE PATHWAYS ---
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    output_dir = os.path.join(root_dir, "outputs")
+    
+    agent1_path = os.path.join(output_dir, "transactions.json")
+    agent2_path = os.path.join(output_dir, "agent2_output.json")
+    output_file_path = os.path.join(output_dir, "agent3_output.json")
+
+    print("[INFO] Loading live upstream files from outputs folder...\n")
     
     try:
+        # --- 1. VERIFY FILES EXIST ---
+        if not os.path.exists(agent1_path) or not os.path.exists(agent2_path):
+            raise FileNotFoundError(
+                f"Missing upstream dependencies!\n"
+                f"Ensure Agent 1 and Agent 2 have successfully run first.\n"
+                f"Expected:\n  - {agent1_path}\n  - {agent2_path}"
+            )
+
+        # --- 2. READ REAL LIVE DATA ---
+        with open(agent1_path, "r", encoding="utf-8") as f1:
+            live_transactions = json.load(f1)
+            
+        with open(agent2_path, "r", encoding="utf-8") as f2:
+            live_agent2_data = json.load(f2)
+            
+        print("✅ Live files loaded successfully.")
+        
+        # --- 3. DYNAMIC TRANSLATION STEP ---
+        # Agent 1 outputs a raw transaction list. Let's calculate the real totals dynamically 
+        # so your pipeline gets the exact key metrics it expects!
+        income = 0
+        total_expenses = 0
+        food_expenses = 0
+        shopping_expenses = 0
+        bill_expenses = 0
+        transfer_expenses = 0
+        atm_expenses = 0
+        
+        for txn in live_transactions:
+            amount = float(txn.get("amount", 0))
+            category = txn.get("category", "")
+            
+            if txn.get("type") == "Credit":
+                if category == "Salary":
+                    income += amount
+                else:
+                    # Treat interest/transfers in credit as dynamic internal income pool additions
+                    income += amount
+            elif txn.get("type") == "Debit":
+                total_expenses += amount
+                if category == "Food":
+                    food_expenses += amount
+                elif category == "Shopping":
+                    shopping_expenses += amount
+                elif category == "Bills":
+                    bill_expenses += amount
+                elif category == "Transfer":
+                    transfer_expenses += amount
+                elif category == "ATM Withdrawal":
+                    atm_expenses += amount
+
+        # Build clean dynamic structure for your internal code rules
+        live_agent1_data = {
+            "income": round(income, 2),
+            "expense": round(total_expenses, 2),
+            "food": round(food_expenses + (atm_expenses * 0.15), 2),        # Factor ATM cash approximations 
+            "shopping": round(shopping_expenses + (atm_expenses * 0.20), 2),  # into categories safely
+            "subscriptions": 0.0,
+            "emi": 0.0,
+            "disposable_income": round(income - total_expenses, 2)
+        }
+        
+        print(f"[DATA TRACE] Computed Live Intake: Income={live_agent1_data['income']}, Disposable={live_agent1_data['disposable_income']}")
+        print("[INFO] Triggering cloud LLM workflow and internal feasibility engine...\n")
+        
+        # --- 4. RUN THE AGENT 3 PIPELINE ---
         structured_json_response = run_agent3_pipeline(
-            agent1_json=mock_agent1_data, 
-            agent2_json=mock_agent2_data, 
+            agent1_json=live_agent1_data, 
+            agent2_json=live_agent2_data, 
             user_goal_json=mock_user_intent
         )
         
         print("\n" + "=" * 70)
-        print("  SUCCESS: VALID STRATEGY ROADMAP TARGET GENERATED BY GEMINI ENGINE  ")
+        print("   SUCCESS: VALID STRATEGY ROADMAP TARGET GENERATED BY GEMINI ENGINE  ")
         print("=" * 70)
         print(structured_json_response)
         
+        # --- 5. WRITE OUTPUT DIRECTLY TO DISK ---
+       # --- WRITE OUTPUT DIRECTLY TO DISK ---
+        os.makedirs(output_dir, exist_ok=True)
+        
+        with open(output_file_path, "w", encoding="utf-8") as out_file:
+            clean_data = None
+            
+            # 🔍 TARGET LAYER: Extract fields from custom CrewAI Output Wrapper Objects
+            # CrewAI wraps outputs inside an object containing 'json_dict' or 'raw' text properties
+            if hasattr(structured_json_response, 'json_dict') and structured_json_response.json_dict:
+                clean_data = structured_json_response.json_dict
+            elif hasattr(structured_json_response, 'raw') and isinstance(structured_json_response.raw, str):
+                try:
+                    clean_data = json.loads(structured_json_response.raw)
+                except json.JSONDecodeError:
+                    pass
+
+            # Primitive Case A: The response is natively already a standard dict layout
+            if clean_data is None and isinstance(structured_json_response, dict):
+                if "json_dict" in structured_json_response and structured_json_response["json_dict"]:
+                    clean_data = structured_json_response["json_dict"]
+                elif "raw" in structured_json_response and isinstance(structured_json_response["raw"], str):
+                    try:
+                        clean_data = json.loads(structured_json_response["raw"])
+                    except json.JSONDecodeError:
+                        pass
+                if clean_data is None:
+                    clean_data = structured_json_response
+
+            # Primitive Case B: The response was returned or cast as a raw wrapper text block string
+            elif clean_data is None and isinstance(structured_json_response, str):
+                try:
+                    parsed_wrapper = json.loads(structured_json_response)
+                    if isinstance(parsed_wrapper, dict):
+                        if "json_dict" in parsed_wrapper and parsed_wrapper["json_dict"]:
+                            clean_data = parsed_wrapper["json_dict"]
+                        elif "raw" in parsed_wrapper and isinstance(parsed_wrapper["raw"], str):
+                            clean_data = json.loads(parsed_wrapper["raw"])
+                except Exception:
+                    pass
+
+                # Smart Scissor Regex Snipper Fallback if the string contains plain text log dumps
+                if clean_data is None:
+                    raw_text = structured_json_response
+                    if '"json_dict":' in raw_text:
+                        try:
+                            target_segment = raw_text.split('"json_dict":')[1].strip()
+                            s_idx = target_segment.find('{')
+                            b_count = 0
+                            for idx, char in enumerate(target_segment[s_idx:], start=s_idx):
+                                if char == '{':
+                                    b_count += 1
+                                elif char == '}':
+                                    b_count -= 1
+                                    if b_count == 0:
+                                        clean_data = json.loads(target_segment[s_idx:idx + 1])
+                                        break
+                        except Exception:
+                            pass
+
+            # Standard fallback dump handler if all dynamic unpackers fail
+            if clean_data is None:
+                if hasattr(structured_json_response, 'model_dump_json') and callable(getattr(structured_json_response, 'model_dump_json')):
+                    out_file.write(structured_json_response.model_dump_json(indent=4))
+                    print(f"\n💾 [EXPORT SUCCESS] Clean Pydantic structure saved to: {output_file_path}\n")
+                    return
+                elif hasattr(structured_json_response, 'json') and callable(getattr(structured_json_response, 'json')):
+                    try:
+                        out_file.write(structured_json_response.json(indent=4))
+                    except TypeError:
+                        out_file.write(str(structured_json_response.json))
+                    print(f"\n💾 [EXPORT SUCCESS] Clean Pydantic structure saved to: {output_file_path}\n")
+                    return
+                else:
+                    clean_data = structured_json_response
+
+            # Write out the clean, formatted dictionary payload
+            if isinstance(clean_data, dict):
+                json.dump(clean_data, out_file, indent=4)
+            else:
+                out_file.write(str(clean_data))
+                    
+        print(f"\n💾 [EXPORT SUCCESS] Clean strategy (extracted json_dict) saved to: {output_file_path}\n")
     except Exception as e:
         print(f"\n[RUN RUNTIME BREAKDOWN] Operational trace failed: {str(e)}")
 
 if __name__ == "__main__":
     execute_local_agent_test()
-    
