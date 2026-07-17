@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Generated outputs
+outputs/*.json
+
+# Temporary test scripts
+test_agent5_*.py
+
+# Uploaded files
+agent5/uploads/*
+!agent5/uploads/.gitkeep

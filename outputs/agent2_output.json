@@ -1,19 +1,17 @@
 {
-    "financial_score": 55,
-    "health_level": "Needs Improvement",
-    "savings_rate": 2.39,
-    "expense_ratio": 97.61,
-    "shopping_ratio": 26.41,
+    "financial_score": 100,
+    "health_level": "Excellent",
+    "savings_rate": 96.6,
+    "expense_ratio": 3.4,
+    "shopping_ratio": 2.5,
     "subscription_ratio": 0.0,
-    "food_ratio": 1.36,
+    "food_ratio": 0.9,
     "emi_ratio": 0.0,
     "bnpl_ratio": 0.0,
     "strengths": [
+        "Good savings habit",
+        "Controlled expenses",
         "Low EMI"
     ],
-    "weaknesses": [
-        "Low savings",
-        "High expenses",
-        "High shopping"
-    ]
+    "weaknesses": []
 }
