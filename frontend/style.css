@@ -458,12 +458,19 @@ select:focus-visible {
   padding: 20px;
   box-shadow: 0 24px 60px rgba(0,0,0,0.5);
 }
+.modal-wide {
+  max-width: 480px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+}
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
 }
 .modal-header h2 {
   font-family: var(--font-display);
@@ -471,12 +478,90 @@ select:focus-visible {
   font-size: 19px;
   margin: 0;
 }
+.modal-subtitle {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 0 0 16px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
 
-.ledger-form { display: flex; flex-direction: column; gap: 14px; }
+.ledger-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field-row { display: flex; gap: 12px; }
 .field-row .field { flex: 1; }
+
+/* ---- repeatable transaction rows ---- */
+
+.tx-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tx-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: var(--panel-raised);
+  position: relative;
+}
+
+.tx-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tx-row-index {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brass-soft);
+}
+.tx-row-remove {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px;
+  line-height: 0;
+  border-radius: 4px;
+}
+.tx-row-remove:hover { color: var(--danger); }
+/* first row can't be removed below one entry */
+.tx-rows .tx-row:only-child .tx-row-remove { display: none; }
+
+.add-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px dashed var(--rule);
+  color: var(--paper-dim);
+  border-radius: var(--radius-sm);
+  padding: 9px;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.add-row-btn:hover {
+  border-color: var(--brass);
+  color: var(--brass-soft);
+}
+.add-row-btn svg { color: var(--brass-soft); }
 
 .field label {
   font-size: 12px;

@@ -63,16 +63,16 @@
           <div class="attach-menu" id="attachMenu" role="menu">
             <button type="button" role="menuitem" id="uploadFileOption">
               <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 3v12m0-12 4 4m-4-4-4 4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Upload statement <span>PDF or CSV</span>
+              Upload statement <span>PDF, CSV or image · multiple files ok</span>
             </button>
             <button type="button" role="menuitem" id="manualEntryOption">
               <svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></svg>
-              Enter transaction manually <span>Add one line by hand</span>
+              Enter transaction manually <span>Add one or more lines by hand</span>
             </button>
           </div>
         </div>
 
-        <input type="file" id="fileInput" accept=".pdf,.csv" hidden />
+        <input type="file" id="fileInput" accept=".pdf,.csv,image/*" multiple hidden />
 
         <textarea
           id="messageInput"
@@ -94,52 +94,73 @@
 
   <!-- ===== Manual transaction entry modal ===== -->
   <div class="modal-overlay" id="modalOverlay">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-header">
-        <h2 id="modalTitle">Add a transaction</h2>
+        <h2 id="modalTitle">Add transactions</h2>
         <button class="icon-btn" id="modalCloseBtn" title="Close">
           <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
       </div>
+      <p class="modal-subtitle">Add as many lines as you need &mdash; handy for entering a whole month's payment history at once.</p>
 
       <form id="manualEntryForm" class="ledger-form">
-        <div class="field">
-          <label for="txDate">Date</label>
-          <input type="date" id="txDate" required>
-        </div>
-        <div class="field">
-          <label for="txMerchant">Merchant</label>
-          <input type="text" id="txMerchant" placeholder="e.g. Big Bazaar" required>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="txAmount">Amount</label>
-            <input type="number" id="txAmount" step="0.01" placeholder="0.00" required>
-          </div>
-          <div class="field">
-            <label for="txType">Type</label>
-            <select id="txType">
-              <option value="debit">Debit</option>
-              <option value="credit">Credit</option>
-            </select>
-          </div>
-        </div>
-        <div class="field">
-          <label for="txCategory">Category</label>
-          <select id="txCategory">
-            <option value="shopping">Shopping</option>
-            <option value="food">Food</option>
-            <option value="subscription">Subscription</option>
-            <option value="emi">EMI</option>
-            <option value="bnpl">BNPL</option>
-            <option value="other">Other</option>
-          </select>
+        <div class="tx-rows" id="txRows">
+          <!-- transaction row template lives here; rows are cloned in from #txRowTemplate -->
         </div>
 
-        <button type="submit" class="primary-btn">Add to conversation</button>
+        <button type="button" class="add-row-btn" id="addRowBtn">
+          <svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Add another entry
+        </button>
+
+        <button type="submit" class="primary-btn" id="manualSubmitBtn">Add to conversation</button>
       </form>
     </div>
   </div>
+
+  <!-- Hidden template for a single transaction row, cloned by script.js -->
+  <template id="txRowTemplate">
+    <div class="tx-row">
+      <div class="tx-row-header">
+        <span class="tx-row-index"></span>
+        <button type="button" class="tx-row-remove" title="Remove this entry">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" class="tx-date" required>
+      </div>
+      <div class="field">
+        <label>Merchant</label>
+        <input type="text" class="tx-merchant" placeholder="e.g. Big Bazaar" required>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Amount</label>
+          <input type="number" class="tx-amount" step="0.01" placeholder="0.00" required>
+        </div>
+        <div class="field">
+          <label>Type</label>
+          <select class="tx-type">
+            <option value="debit">Debit</option>
+            <option value="credit">Credit</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <select class="tx-category">
+          <option value="shopping">Shopping</option>
+          <option value="food">Food</option>
+          <option value="subscription">Subscription</option>
+          <option value="emi">EMI</option>
+          <option value="bnpl">BNPL</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+  </template>
 
   <script src="script.js"></script>
 </body>

@@ -30,6 +30,9 @@ const newChatBtn = document.getElementById("newChatBtn");
 const modalOverlay = document.getElementById("modalOverlay");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
 const manualEntryForm = document.getElementById("manualEntryForm");
+const txRows = document.getElementById("txRows");
+const addRowBtn = document.getElementById("addRowBtn");
+const txRowTemplate = document.getElementById("txRowTemplate");
 
 let entryList = null;       // holder for the message list once chat starts
 let pendingAttachments = []; // files / manual entries waiting to be sent with the next message
@@ -154,26 +157,58 @@ uploadFileOption.addEventListener("click", () => {
   fileInput.click();
 });
 
+// Accepts multiple files at once (statements as PDF/CSV, or photos of a passbook/receipt as images)
 fileInput.addEventListener("change", () => {
-  const file = fileInput.files[0];
-  if (!file) return;
-  const ext = file.name.split(".").pop().toLowerCase();
-  pendingAttachments.push({ type: "file", name: file.name, fileType: ext, file });
+  const files = Array.from(fileInput.files || []);
+  files.forEach((file) => {
+    const ext = file.name.split(".").pop().toLowerCase();
+    pendingAttachments.push({ type: "file", name: file.name, fileType: ext, file });
+  });
   renderAttachmentChips();
   fileInput.value = "";
 });
 
-// ---------- manual entry modal ----------
+// ---------- manual entry modal (repeatable rows) ----------
+
+function makeTxRow() {
+  const fragment = txRowTemplate.content.cloneNode(true);
+  const row = fragment.querySelector(".tx-row");
+  row.querySelector(".tx-row-remove").addEventListener("click", () => {
+    if (txRows.querySelectorAll(".tx-row").length <= 1) return; // keep at least one row
+    row.remove();
+    renumberRows();
+  });
+  return row;
+}
+
+function renumberRows() {
+  txRows.querySelectorAll(".tx-row").forEach((row, i) => {
+    row.querySelector(".tx-row-index").textContent = `Entry ${i + 1}`;
+  });
+}
+
+function resetTxRows() {
+  txRows.innerHTML = "";
+  txRows.appendChild(makeTxRow());
+  renumberRows();
+}
+
+addRowBtn.addEventListener("click", () => {
+  txRows.appendChild(makeTxRow());
+  renumberRows();
+  // scroll the new row into view within the scrollable form
+  txRows.lastElementChild.scrollIntoView({ block: "nearest", behavior: "smooth" });
+});
 
 manualEntryOption.addEventListener("click", () => {
   closeAttachMenu();
+  resetTxRows();
   modalOverlay.classList.add("open");
-  document.getElementById("txDate").focus();
+  txRows.querySelector(".tx-date").focus();
 });
 
 function closeModal() {
   modalOverlay.classList.remove("open");
-  manualEntryForm.reset();
 }
 
 modalCloseBtn.addEventListener("click", closeModal);
@@ -183,14 +218,19 @@ modalOverlay.addEventListener("click", (e) => {
 
 manualEntryForm.addEventListener("submit", (e) => {
   e.preventDefault();
-  const data = {
-    date: document.getElementById("txDate").value,
-    merchant: document.getElementById("txMerchant").value,
-    amount: document.getElementById("txAmount").value,
-    type: document.getElementById("txType").value,
-    category: document.getElementById("txCategory").value,
-  };
-  pendingAttachments.push({ type: "manual", data });
+
+  const rows = Array.from(txRows.querySelectorAll(".tx-row"));
+  rows.forEach((row) => {
+    const data = {
+      date: row.querySelector(".tx-date").value,
+      merchant: row.querySelector(".tx-merchant").value,
+      amount: row.querySelector(".tx-amount").value,
+      type: row.querySelector(".tx-type").value,
+      category: row.querySelector(".tx-category").value,
+    };
+    pendingAttachments.push({ type: "manual", data });
+  });
+
   renderAttachmentChips();
   closeModal();
 });
@@ -269,16 +309,16 @@ composerForm.addEventListener("submit", async (e) => {
 // FastAPI orchestrator once Agent 5 is exposed over HTTP.
 //
 // Suggested contract:
-//   POST /api/agent5/chat        { message: string }        -> { reply: string }
-//   POST /api/agent5/upload      multipart/form-data "file"  -> { reply: string }
-// If you'd rather send everything (text + files + manual
-// entries) in one request, switch CHAT_ENDPOINT to accept
-// multipart/form-data instead and build a FormData below.
+//   POST /api/agent5/chat        { message, manual_entries }  -> { reply: string }
+//   POST /api/agent5/upload      multipart/form-data "file"   -> { reply: string }
+// Files are uploaded one at a time (one request per file) so
+// each can be routed to Agent 1 individually; manual entries
+// are batched and sent together with the chat message.
 // ---------------------------------------------------------
 async function sendToAgent5({ message, attachments }) {
   // ---- Real implementation (uncomment and adjust once FastAPI is ready) ----
   //
-  // // 1) Upload any files first
+  // // 1) Upload any files first (one request per file)
   // for (const att of attachments.filter(a => a.type === "file")) {
   //   const formData = new FormData();
   //   formData.append("file", att.file);
@@ -299,13 +339,27 @@ async function sendToAgent5({ message, attachments }) {
   // ---- Mock implementation (demo only — remove once wired up) ----
   await new Promise((resolve) => setTimeout(resolve, 900 + Math.random() * 600));
 
-  if (attachments.some((a) => a.type === "file")) {
-    const f = attachments.find((a) => a.type === "file");
-    return `Got your ${f.fileType.toUpperCase()} statement (${f.name}). Once the backend is connected, Agent 1 will parse this and Agent 5 will use it to answer your question.`;
+  const files = attachments.filter((a) => a.type === "file");
+  const manualEntries = attachments.filter((a) => a.type === "manual");
+
+  if (files.length && manualEntries.length) {
+    return `Got ${files.length} file${files.length > 1 ? "s" : ""} and ${manualEntries.length} manual ${manualEntries.length > 1 ? "entries" : "entry"}. Once the backend is connected, Agent 1 will parse the files and Agent 5 will fold everything into its answer.`;
   }
-  if (attachments.some((a) => a.type === "manual")) {
-    const t = attachments.find((a) => a.type === "manual").data;
-    return `Logged: ${t.merchant} — ₹${t.amount} (${t.category}) on ${t.date}. This is a placeholder reply — connect Agent 5 to generate a real response.`;
+  if (files.length) {
+    if (files.length === 1) {
+      return `Got your ${files[0].fileType.toUpperCase()} file (${files[0].name}). Once the backend is connected, Agent 1 will parse this and Agent 5 will use it to answer your question.`;
+    }
+    return `Got ${files.length} files (${files.map((f) => f.name).join(", ")}). Once the backend is connected, Agent 1 will parse each of these and Agent 5 will use them to answer your question.`;
+  }
+  if (manualEntries.length) {
+    if (manualEntries.length === 1) {
+      const t = manualEntries[0].data;
+      return `Logged: ${t.merchant} — ₹${t.amount} (${t.category}) on ${t.date}. This is a placeholder reply — connect Agent 5 to generate a real response.`;
+    }
+    const total = manualEntries
+      .reduce((sum, a) => sum + (parseFloat(a.data.amount) || 0), 0)
+      .toFixed(2);
+    return `Logged ${manualEntries.length} transactions totalling ₹${total}. This is a placeholder reply — connect Agent 5 to generate a real response.`;
   }
   return `This is a placeholder reply from Finplot AI. Once your FastAPI endpoint is live, this message will come from Agent 5 instead.`;
 }
