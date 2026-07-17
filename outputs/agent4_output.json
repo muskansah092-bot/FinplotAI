@@ -1,0 +1,69 @@
+{
+    "risk_profile": "Moderate-Conservative",
+    "total_monthly_investment": 6300.0,
+    "investment_options": [
+        {
+            "category_name": "Liquid Fund",
+            "monthly_contribution": 2000.0,
+            "security_level": "Market-Linked",
+            "risk_level": "Low",
+            "simple_explanation": "A debt-based mutual fund that invests in short-term money market instruments, providing high liquidity for short-term goals.",
+            "important_features": [
+                "High liquidity",
+                "Low interest rate risk",
+                "Ideal for 10-month horizon"
+            ]
+        },
+        {
+            "category_name": "Recurring Deposit (RD)",
+            "monthly_contribution": 2000.0,
+            "security_level": "Bank-Backed",
+            "risk_level": "Low",
+            "simple_explanation": "A fixed-income instrument where you deposit a set amount monthly to earn guaranteed interest.",
+            "important_features": [
+                "Capital protection",
+                "Fixed returns",
+                "No market volatility"
+            ]
+        },
+        {
+            "category_name": "Ultra Short Duration Fund",
+            "monthly_contribution": 1300.0,
+            "security_level": "Market-Linked",
+            "risk_level": "Low",
+            "simple_explanation": "Invests in debt securities with very short maturities, aiming for slightly better returns than a savings account.",
+            "important_features": [
+                "Low volatility",
+                "Professional management",
+                "Easy redemption"
+            ]
+        },
+        {
+            "category_name": "Index Fund (Nifty 50)",
+            "monthly_contribution": 500.0,
+            "security_level": "Market-Linked",
+            "risk_level": "High",
+            "simple_explanation": "A passive investment tracking the top 50 companies, suitable only for long-term wealth creation.",
+            "important_features": [
+                "Low expense ratio",
+                "Market-linked volatility",
+                "Not recommended for 10-month goals"
+            ]
+        },
+        {
+            "category_name": "Savings Account Sweep-in",
+            "monthly_contribution": 500.0,
+            "security_level": "Bank-Backed",
+            "risk_level": "Low",
+            "simple_explanation": "Excess funds are automatically moved to a fixed deposit to earn higher interest while remaining accessible.",
+            "important_features": [
+                "Instant liquidity",
+                "No lock-in",
+                "Safety of principal"
+            ]
+        }
+    ],
+    "best_recommended_option": "Recurring Deposit (RD)",
+    "reasoning_for_best_choice": "Given the 10-month timeline for a specific purchase (Laptop), capital preservation is paramount. Per SEBI/AMFI guidelines, market-linked instruments carry principal variance risk over short horizons; therefore, the guaranteed returns of an RD align best with the goal's maturity date.",
+    "disclaimer": "This information is for educational purposes only and does not constitute financial advice. Investments in securities are subject to market risks. Please consult with a SEBI-registered investment advisor before making any financial decisions."
+}
