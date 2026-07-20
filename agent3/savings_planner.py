@@ -13,7 +13,11 @@ from crewai.tools import tool
 @tool("Financial Planning Knowledge Base")
 def search_financial_knowledge(query: str) -> str:
     """Reads and returns the rules, budgeting frameworks, and priorities from the local knowledge base directory."""
-    knowledge_path = "C:/Users/lenovo/FinplotAI/agent3/knowledge/goal_planning_principles.txt"
+    # Was hardcoded to a specific teammate's Windows path — made
+    # relative to this file instead so it works on any machine.
+    knowledge_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "knowledge", "goal_planning_principles.txt"
+    )
     try:
         if os.path.exists(knowledge_path):
             with open(knowledge_path, "r", encoding="utf-8") as file:

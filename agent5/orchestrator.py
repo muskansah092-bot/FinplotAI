@@ -58,7 +58,10 @@ def _run_agent_chain(memory, intent: str) -> dict:
         transactions = integrations.run_agent1_from_manual(manual_data)
     memory.set_agent_output("agent1", transactions)
 
-    agent2_output = integrations.run_agent2()
+    # NOTE: passing transactions in explicitly now — Agent 2's own
+    # run_agent2() reads a file path that never matches where Agent 1's
+    # output actually gets saved (see integrations.py for details).
+    agent2_output = integrations.run_agent2(transactions)
     memory.set_agent_output("agent2", agent2_output)
 
     if intent in ("goal_planning", "investment_advice"):

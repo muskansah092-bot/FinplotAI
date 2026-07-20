@@ -1,18 +1,18 @@
 /* =========================================================
    Finplot AI — frontend logic
-   Everything under "BACKEND INTEGRATION POINTS" is where you
-   wire this up to your FastAPI orchestrator (Agent 5). Until
-   then, sendToAgent5() returns a mocked response so you can
-   demo the UI end to end.
+   Connected to Agent 5's real FastAPI server. See API_BASE_URL
+   below if your backend runs somewhere other than localhost:8000.
    ========================================================= */
 
-// ---------------------------------------------------------
-// BACKEND INTEGRATION POINTS — edit these two constants and
-// the sendToAgent5() function once your FastAPI server is up.
-// ---------------------------------------------------------
-const API_BASE_URL = "http://localhost:8000"; // your FastAPI base URL
-const CHAT_ENDPOINT = `${API_BASE_URL}/api/agent5/chat`;       // expects { message, attachments } -> { reply }
-const UPLOAD_ENDPOINT = `${API_BASE_URL}/api/agent5/upload`;   // expects multipart/form-data with "file"
+const API_BASE_URL = "http://localhost:8000"; // Agent 5's FastAPI base URL
+const CHAT_ENDPOINT = `${API_BASE_URL}/chat`;     // POST { session_id, message } -> { session_id, type, text }
+const UPLOAD_ENDPOINT = `${API_BASE_URL}/upload`; // POST multipart/form-data: session_id, file -> { session_id, type, text }
+const RESET_ENDPOINT = `${API_BASE_URL}/reset`;   // POST ?session_id=... -> clears that session's memory
+
+// Agent 5 keeps conversation state in memory, keyed by session_id.
+// We generate one per browser tab and reuse it for every message
+// until "New entry" is clicked.
+let sessionId = crypto.randomUUID();
 
 const chatLog = document.getElementById("chatLog");
 const emptyState = document.getElementById("emptyState");
@@ -34,8 +34,8 @@ const txRows = document.getElementById("txRows");
 const addRowBtn = document.getElementById("addRowBtn");
 const txRowTemplate = document.getElementById("txRowTemplate");
 
-let entryList = null;       // holder for the message list once chat starts
-let pendingAttachments = []; // files / manual entries waiting to be sent with the next message
+let entryList = null;        // holder for the message list once chat starts
+let pendingAttachments = [];  // files / manual entries waiting to be sent with the next message
 
 // ---------- helpers ----------
 
@@ -87,6 +87,10 @@ function addTypingIndicator() {
   const textEl = entry.querySelector(".entry-text");
   textEl.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
   return entry;
+}
+
+function setEntryText(entry, text) {
+  entry.querySelector(".entry-text").textContent = text;
 }
 
 function attachmentCardHTML(att) {
@@ -196,7 +200,6 @@ function resetTxRows() {
 addRowBtn.addEventListener("click", () => {
   txRows.appendChild(makeTxRow());
   renumberRows();
-  // scroll the new row into view within the scrollable form
   txRows.lastElementChild.scrollIntoView({ block: "nearest", behavior: "smooth" });
 });
 
@@ -247,7 +250,16 @@ document.querySelectorAll(".suggestion").forEach((btn) => {
 
 // ---------- new chat ----------
 
-newChatBtn.addEventListener("click", () => {
+newChatBtn.addEventListener("click", async () => {
+  // Best-effort: clear this session's memory server-side too, so a
+  // stray late reply can't land in a chat that looks empty.
+  try {
+    await fetch(`${RESET_ENDPOINT}?session_id=${encodeURIComponent(sessionId)}`, { method: "POST" });
+  } catch (err) {
+    console.error("Failed to reset session on the server:", err);
+  }
+
+  sessionId = crypto.randomUUID();
   chatLog.innerHTML = "";
   chatLog.appendChild(emptyState);
   entryList = null;
@@ -270,6 +282,20 @@ messageInput.addEventListener("keydown", (e) => {
 });
 
 // ---------- send ----------
+//
+// Agent 5's backend is conversational and stateful, not a single
+// request/response call — so a "send" here can turn into several
+// real requests:
+//
+//   1. Each uploaded file goes to POST /upload on its own. Agent 5
+//      treats every upload as its own conversational turn (it may
+//      immediately run the full analysis, or ask a follow-up
+//      question) — so each file gets its own reply, in order.
+//   2. Manual transaction entries aren't a separate upload type on
+//      the backend — Agent 5 reads them as plain text typed in
+//      chat. So manual entries get folded into the message text
+//      and sent to POST /chat.
+//   3. Typed text with no attachments just goes straight to /chat.
 
 composerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -278,7 +304,6 @@ composerForm.addEventListener("submit", async (e) => {
 
   const attachmentsToSend = [...pendingAttachments];
 
-  // Render the user's message, with a small card per attachment
   let cardHTML = "";
   attachmentsToSend.forEach((att) => { cardHTML += attachmentCardHTML(att); });
   addMessage({ role: "user", text: text || undefined, cardHTML: cardHTML || undefined });
@@ -289,77 +314,65 @@ composerForm.addEventListener("submit", async (e) => {
   renderAttachmentChips();
   sendBtn.disabled = true;
 
-  const typingEntry = addTypingIndicator();
-
   try {
-    const reply = await sendToAgent5({ message: text, attachments: attachmentsToSend });
-    typingEntry.querySelector(".entry-text").textContent = reply;
-  } catch (err) {
-    typingEntry.querySelector(".entry-text").textContent =
-      "Something went wrong reaching Finplot AI. Check that the backend is running.";
-    console.error(err);
+    const files = attachmentsToSend.filter((a) => a.type === "file");
+    for (const att of files) {
+      const typingEntry = addTypingIndicator();
+      try {
+        const reply = await uploadFile(att.file);
+        setEntryText(typingEntry, reply);
+      } catch (err) {
+        console.error(err);
+        setEntryText(typingEntry, `Couldn't process ${att.name}. Check that the backend is running.`);
+      }
+    }
+
+    const manualEntries = attachmentsToSend.filter((a) => a.type === "manual");
+    const combinedMessage = buildCombinedMessage(text, manualEntries);
+
+    if (combinedMessage) {
+      const typingEntry = addTypingIndicator();
+      try {
+        const reply = await sendChatMessage(combinedMessage);
+        setEntryText(typingEntry, reply);
+      } catch (err) {
+        console.error(err);
+        setEntryText(typingEntry, "Something went wrong reaching Finplot AI. Check that the backend is running.");
+      }
+    }
   } finally {
     sendBtn.disabled = false;
   }
 });
 
-// ---------------------------------------------------------
-// BACKEND INTEGRATION POINT
-// Replace the mocked body below with real calls to your
-// FastAPI orchestrator once Agent 5 is exposed over HTTP.
-//
-// Suggested contract:
-//   POST /api/agent5/chat        { message, manual_entries }  -> { reply: string }
-//   POST /api/agent5/upload      multipart/form-data "file"   -> { reply: string }
-// Files are uploaded one at a time (one request per file) so
-// each can be routed to Agent 1 individually; manual entries
-// are batched and sent together with the chat message.
-// ---------------------------------------------------------
-async function sendToAgent5({ message, attachments }) {
-  // ---- Real implementation (uncomment and adjust once FastAPI is ready) ----
-  //
-  // // 1) Upload any files first (one request per file)
-  // for (const att of attachments.filter(a => a.type === "file")) {
-  //   const formData = new FormData();
-  //   formData.append("file", att.file);
-  //   await fetch(UPLOAD_ENDPOINT, { method: "POST", body: formData });
-  // }
-  //
-  // // 2) Send the chat message (+ any manual entries) to Agent 5
-  // const manualEntries = attachments.filter(a => a.type === "manual").map(a => a.data);
-  // const res = await fetch(CHAT_ENDPOINT, {
-  //   method: "POST",
-  //   headers: { "Content-Type": "application/json" },
-  //   body: JSON.stringify({ message, manual_entries: manualEntries }),
-  // });
-  // if (!res.ok) throw new Error(`Agent 5 returned ${res.status}`);
-  // const data = await res.json();
-  // return data.reply;
+function buildCombinedMessage(text, manualEntries) {
+  const lines = [];
+  if (text) lines.push(text);
+  manualEntries.forEach((att) => {
+    const t = att.data;
+    lines.push(`Transaction: ${t.date}, ${t.merchant}, amount ${t.amount}, type ${t.type}, category ${t.category}`);
+  });
+  return lines.join("\n");
+}
 
-  // ---- Mock implementation (demo only — remove once wired up) ----
-  await new Promise((resolve) => setTimeout(resolve, 900 + Math.random() * 600));
+async function uploadFile(file) {
+  const formData = new FormData();
+  formData.append("session_id", sessionId);
+  formData.append("file", file);
 
-  const files = attachments.filter((a) => a.type === "file");
-  const manualEntries = attachments.filter((a) => a.type === "manual");
+  const res = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: formData });
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  const data = await res.json();
+  return data.text;
+}
 
-  if (files.length && manualEntries.length) {
-    return `Got ${files.length} file${files.length > 1 ? "s" : ""} and ${manualEntries.length} manual ${manualEntries.length > 1 ? "entries" : "entry"}. Once the backend is connected, Agent 1 will parse the files and Agent 5 will fold everything into its answer.`;
-  }
-  if (files.length) {
-    if (files.length === 1) {
-      return `Got your ${files[0].fileType.toUpperCase()} file (${files[0].name}). Once the backend is connected, Agent 1 will parse this and Agent 5 will use it to answer your question.`;
-    }
-    return `Got ${files.length} files (${files.map((f) => f.name).join(", ")}). Once the backend is connected, Agent 1 will parse each of these and Agent 5 will use them to answer your question.`;
-  }
-  if (manualEntries.length) {
-    if (manualEntries.length === 1) {
-      const t = manualEntries[0].data;
-      return `Logged: ${t.merchant} — ₹${t.amount} (${t.category}) on ${t.date}. This is a placeholder reply — connect Agent 5 to generate a real response.`;
-    }
-    const total = manualEntries
-      .reduce((sum, a) => sum + (parseFloat(a.data.amount) || 0), 0)
-      .toFixed(2);
-    return `Logged ${manualEntries.length} transactions totalling ₹${total}. This is a placeholder reply — connect Agent 5 to generate a real response.`;
-  }
-  return `This is a placeholder reply from Finplot AI. Once your FastAPI endpoint is live, this message will come from Agent 5 instead.`;
+async function sendChatMessage(message) {
+  const res = await fetch(CHAT_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionId, message }),
+  });
+  if (!res.ok) throw new Error(`Chat failed: ${res.status}`);
+  const data = await res.json();
+  return data.text;
 }
