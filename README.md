@@ -38,4 +38,3 @@ CrewAI-based Financial Assistant with 5 AI agents for expense analysis, financia
 ```
 
 7. Open [http://localhost:8000/](http://localhost:8000/) in a browser — the frontend is served directly by the same FastAPI app, so no separate frontend server is needed.
-8. 
