@@ -327,7 +327,7 @@ composerForm.addEventListener("submit", async (e) => {
         setEntryText(typingEntry, reply);
       } catch (err) {
         console.error(err);
-        setEntryText(typingEntry, `Couldn't process ${att.name}. Check that the backend is running.`);
+        setEntryText(typingEntry, `Couldn't process ${att.name}: ${errorMessage(err)}`);
       }
     }
 
@@ -341,7 +341,7 @@ composerForm.addEventListener("submit", async (e) => {
         setEntryText(typingEntry, reply);
       } catch (err) {
         console.error(err);
-        setEntryText(typingEntry, "Something went wrong reaching Finplot AI. Check that the backend is running.");
+        setEntryText(typingEntry, errorMessage(err));
       }
     }
   } finally {
@@ -416,4 +416,9 @@ async function responseError(res, operation) {
     detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
   } catch (_) {}
   return `${operation} failed (${res.status})${detail ? `: ${detail}` : "."}`;
+}
+
+function errorMessage(err) {
+  if (err instanceof Error && err.message) return err.message;
+  return "An unexpected error occurred. Please try again.";
 }
