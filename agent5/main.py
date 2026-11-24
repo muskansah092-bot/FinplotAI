@@ -1,6 +1,7 @@
 """agent5/main.py"""
 import os
 import uuid
+from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +32,10 @@ class ChatRequest(BaseModel):
     message: str
 
 
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+SUPPORTED_UPLOAD_EXTENSIONS = {".pdf", ".csv", ".xlsx", ".xls", ".png", ".jpg", ".jpeg"}
+
+
 @app.post("/chat")
 def chat(request: ChatRequest):
     """
@@ -42,6 +47,12 @@ def chat(request: ChatRequest):
     try:
         result = handle_message(memory, request.message)
     except Exception as e:
+        message = str(e).lower()
+        if any(marker in message for marker in ("503", "unavailable", "high demand", "429", "rate limit")):
+            raise HTTPException(
+                status_code=503,
+                detail="The AI provider is temporarily unavailable or busy. Please try again shortly.",
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
     return {
@@ -62,14 +73,27 @@ async def upload_file(
     advances the conversation (equivalent to the user saying
     "I've uploaded my file").
     """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file was selected.")
+
+    extension = Path(file.filename).suffix.lower()
+    if extension not in SUPPORTED_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=415,
+            detail="Unsupported file type. Upload PDF, CSV, Excel, PNG, JPG, or JPEG.",
+        )
+
     memory = get_or_create_session(session_id)
 
     # Save with a unique filename to avoid collisions across sessions.
     safe_name = f"{uuid.uuid4().hex}_{file.filename}"
     save_path = os.path.join(UPLOAD_DIR, safe_name)
 
+    content = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File is too large. Maximum size is 10 MB.")
+
     with open(save_path, "wb") as out_file:
-        content = await file.read()
         out_file.write(content)
 
     memory.set_input("file_path", save_path)
@@ -77,6 +101,12 @@ async def upload_file(
     try:
         result = handle_message(memory, "I've uploaded my financial document.")
     except Exception as e:
+        message = str(e).lower()
+        if any(marker in message for marker in ("503", "unavailable", "high demand", "429", "rate limit")):
+            raise HTTPException(
+                status_code=503,
+                detail="The AI provider is temporarily unavailable or busy. Please try again shortly.",
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
     return {

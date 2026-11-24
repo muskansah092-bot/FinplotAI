@@ -4,14 +4,12 @@ from pathlib import Path
 import PyPDF2
 import cv2
 import easyocr
+from functools import lru_cache
 
 
-import pandas as pd
-import pdfplumber
-from pathlib import Path
-import PyPDF2
-import cv2
-import easyocr
+@lru_cache(maxsize=1)
+def _get_ocr_reader():
+    return easyocr.Reader(["en"], gpu=False)
 
 
 class StatementExtractor:
@@ -158,7 +156,7 @@ class StatementExtractor:
         if image is None:
             raise ValueError(f"Unable to open image: {self.file_path}")
 
-        reader = easyocr.Reader(["en"], gpu=False)
+        reader = _get_ocr_reader()
 
         results = reader.readtext(image, detail=0)
 

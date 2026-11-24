@@ -164,6 +164,10 @@ uploadFileOption.addEventListener("click", () => {
 fileInput.addEventListener("change", () => {
   const files = Array.from(fileInput.files || []);
   files.forEach((file) => {
+    if (file.size > 10 * 1024 * 1024) {
+      addMessage({ role: "assistant", text: `${file.name} is larger than the 10 MB upload limit.` });
+      return;
+    }
     const ext = file.name.split(".").pop().toLowerCase();
     pendingAttachments.push({ type: "file", name: file.name, fileType: ext, file });
   });
@@ -359,19 +363,43 @@ async function uploadFile(file) {
   formData.append("session_id", sessionId);
   formData.append("file", file);
 
-  const res = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: formData });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  const res = await fetchWithTimeout(UPLOAD_ENDPOINT, { method: "POST", body: formData }, 180000);
+  if (!res.ok) throw new Error(await responseError(res, "Upload"));
   const data = await res.json();
   return data.text;
 }
 
 async function sendChatMessage(message) {
-  const res = await fetch(CHAT_ENDPOINT, {
+  const res = await fetchWithTimeout(CHAT_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session_id: sessionId, message }),
-  });
-  if (!res.ok) throw new Error(`Chat failed: ${res.status}`);
+  }, 120000);
+  if (!res.ok) throw new Error(await responseError(res, "Chat"));
   const data = await res.json();
   return data.text;
+}
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      throw new Error("The request timed out. The server may be starting or busy; please try again.");
+    }
+    throw new Error("Could not connect to the backend. Check your internet connection and try again.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function responseError(res, operation) {
+  let detail = "";
+  try {
+    const data = await res.json();
+    detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+  } catch (_) {}
+  return `${operation} failed (${res.status})${detail ? `: ${detail}` : "."}`;
 }

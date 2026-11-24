@@ -15,21 +15,30 @@ if not _API_KEY:
 
 _client = genai.Client(api_key=_API_KEY)
 
-MODEL_NAME = "gemini-flash-latest"
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+FALLBACK_MODEL_NAME = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash-lite")
 
 # How many times to retry a call that fails due to rate limiting
 # before giving up, and how long to wait before each retry (seconds).
 # Waits grow each attempt (2s, then 5s, then 10s) since a rate-limit
 # window needs real time to pass, not an instant retry.
-_MAX_RETRIES = 3
-_RETRY_DELAYS = [2, 5, 10]
+_MAX_RETRIES = 4
+_RETRY_DELAYS = [2, 5, 10, 20]
 
-_RATE_LIMIT_MARKERS = ("429", "rate limit", "resource_exhausted", "quota")
+_RETRYABLE_MARKERS = (
+    "429",
+    "rate limit",
+    "resource_exhausted",
+    "quota",
+    "503",
+    "unavailable",
+    "high demand",
+)
 
 
-def _is_rate_limit_error(exc: Exception) -> bool:
+def _is_retryable_error(exc: Exception) -> bool:
     message = str(exc).lower()
-    return any(marker in message for marker in _RATE_LIMIT_MARKERS)
+    return any(marker in message for marker in _RETRYABLE_MARKERS)
 
 
 def get_llm_response(prompt: str, system_instruction: str = None) -> str:
@@ -53,37 +62,41 @@ def get_llm_response(prompt: str, system_instruction: str = None) -> str:
 
     last_error = None
 
-    for attempt in range(_MAX_RETRIES + 1):
-        try:
-            response = _client.models.generate_content(
-                model=MODEL_NAME,
-                contents=prompt,
-                config=config if config else None,
-            )
+    models_to_try = [MODEL_NAME]
+    if FALLBACK_MODEL_NAME and FALLBACK_MODEL_NAME != MODEL_NAME:
+        models_to_try.append(FALLBACK_MODEL_NAME)
 
-            text = response.text
-            if not text:
-                raise ValueError("Gemini returned an empty response.")
-
-            return text.strip()
-
-        except Exception as exc:
-            last_error = exc
-
-            if not _is_rate_limit_error(exc):
-                # Not a rate-limit issue — no point retrying, raise immediately.
-                raise
-
-            if attempt < _MAX_RETRIES:
-                delay = _RETRY_DELAYS[attempt]
-                print(
-                    f"[llm_config] Gemini rate limit hit (attempt {attempt + 1}/"
-                    f"{_MAX_RETRIES + 1}). Retrying in {delay}s..."
+    for model_name in models_to_try:
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                response = _client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=config if config else None,
                 )
-                time.sleep(delay)
+
+                text = response.text
+                if not text:
+                    raise ValueError("Gemini returned an empty response.")
+
+                return text.strip()
+
+            except Exception as exc:
+                last_error = exc
+
+                if not _is_retryable_error(exc):
+                    raise
+
+                if attempt < _MAX_RETRIES:
+                    delay = _RETRY_DELAYS[attempt]
+                    print(
+                        f"[llm_config] Gemini transient error for {model_name} "
+                        f"(attempt {attempt + 1}/{_MAX_RETRIES + 1}). "
+                        f"Retrying in {delay}s..."
+                    )
+                    time.sleep(delay)
 
     raise RuntimeError(
-        "Finplot AI is getting rate-limited by Gemini's free tier "
-        "(too many requests too quickly). Please wait about a minute "
-        "and try again."
+        "Gemini is temporarily unavailable or rate-limited. "
+        "Please wait a minute and try again."
     ) from last_error
