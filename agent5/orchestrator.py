@@ -1,6 +1,5 @@
 """agent5/orchestrator.py"""
 from agent5.intent_classifier import classify_intent
-from agent5 import integrations
 from agent5.slot_filler import extract_field
 from agent5.response_generator import generate_response
 from agent5.rag.simple_rag import answer_general_question
@@ -49,6 +48,8 @@ def _run_agent_chain(memory, intent: str) -> dict:
     whatever transaction input the user gave (file takes priority
     over manual text if somehow both are set).
     """
+    from agent5 import integrations
+
     file_path = memory.get_input("file_path")
     manual_data = memory.get_input("manual_data")
 
