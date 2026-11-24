@@ -4,8 +4,9 @@
    ========================================================= */
 
 const API_BASE_URL = "https://finplotai-api.onrender.com";
-const CHAT_ENDPOINT = `${API_BASE_URL}/chat`;     // POST { session_id, message } -> { session_id, type, text }
-const UPLOAD_ENDPOINT = `${API_BASE_URL}/upload`; // POST multipart/form-data: session_id, file -> { session_id, type, text }
+const CHAT_ENDPOINT = `${API_BASE_URL}/chat/async`;     // POST { session_id, message } -> { job_id, status }
+const UPLOAD_ENDPOINT = `${API_BASE_URL}/upload/async`; // POST multipart/form-data -> { job_id, status }
+const JOB_ENDPOINT = `${API_BASE_URL}/jobs`;
 const RESET_ENDPOINT = `${API_BASE_URL}/reset`;   // POST ?session_id=... -> clears that session's memory
 
 // Agent 5 keeps conversation state in memory, keyed by session_id.
@@ -363,10 +364,10 @@ async function uploadFile(file) {
   formData.append("session_id", sessionId);
   formData.append("file", file);
 
-  const res = await fetchWithTimeout(UPLOAD_ENDPOINT, { method: "POST", body: formData }, 180000);
+  const res = await fetchWithTimeout(UPLOAD_ENDPOINT, { method: "POST", body: formData }, 30000);
   if (!res.ok) throw new Error(await responseError(res, "Upload"));
   const data = await res.json();
-  return data.text;
+  return await waitForJob(data.job_id);
 }
 
 async function sendChatMessage(message) {
@@ -374,10 +375,23 @@ async function sendChatMessage(message) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session_id: sessionId, message }),
-  }, 120000);
+  }, 30000);
   if (!res.ok) throw new Error(await responseError(res, "Chat"));
   const data = await res.json();
-  return data.text;
+  return await waitForJob(data.job_id);
+}
+
+async function waitForJob(jobId) {
+  const deadline = Date.now() + 300000;
+  while (Date.now() < deadline) {
+    const res = await fetchWithTimeout(`${JOB_ENDPOINT}/${encodeURIComponent(jobId)}`, {}, 30000);
+    if (!res.ok) throw new Error(await responseError(res, "Processing"));
+    const job = await res.json();
+    if (job.status === "completed") return job.result.text;
+    if (job.status === "failed") throw new Error(job.error || "Processing failed.");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error("Processing took too long. Please try again.");
 }
 
 async function fetchWithTimeout(url, options, timeoutMs) {

@@ -2,6 +2,7 @@
 import os
 import uuid
 from pathlib import Path
+import threading
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,6 +36,49 @@ class ChatRequest(BaseModel):
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 SUPPORTED_UPLOAD_EXTENSIONS = {".pdf", ".csv", ".xlsx", ".xls", ".png", ".jpg", ".jpeg"}
 
+_JOBS = {}
+_JOBS_LOCK = threading.Lock()
+
+
+def _run_job(job_id: str, memory, message: str):
+    try:
+        result = handle_message(memory, message)
+        payload = {
+            "session_id": None,
+            "type": result["type"],
+            "text": result.get("text", result.get("data")),
+        }
+        with _JOBS_LOCK:
+            _JOBS[job_id] = {"status": "completed", "result": payload}
+    except Exception as exc:
+        message_text = str(exc).lower()
+        if any(marker in message_text for marker in ("503", "unavailable", "high demand", "429", "rate limit")):
+            detail = "The AI provider is temporarily unavailable or busy. Please try again shortly."
+            status_code = 503
+        else:
+            detail = str(exc)
+            status_code = 500
+        with _JOBS_LOCK:
+            _JOBS[job_id] = {
+                "status": "failed",
+                "error": detail,
+                "status_code": status_code,
+            }
+
+
+def _start_job(session_id: str, message: str) -> str:
+    job_id = uuid.uuid4().hex
+    memory = get_or_create_session(session_id)
+    with _JOBS_LOCK:
+        _JOBS[job_id] = {"status": "processing", "result": None}
+    thread = threading.Thread(
+        target=_run_job,
+        args=(job_id, memory, message),
+        daemon=True,
+    )
+    thread.start()
+    return job_id
+
 
 @app.post("/chat")
 def chat(request: ChatRequest):
@@ -60,6 +104,12 @@ def chat(request: ChatRequest):
         "type": result["type"],
         "text": result.get("text", result.get("data")),
     }
+
+
+@app.post("/chat/async")
+def chat_async(request: ChatRequest):
+    job_id = _start_job(request.session_id, request.message)
+    return {"job_id": job_id, "status": "processing"}
 
 
 @app.post("/upload")
@@ -114,6 +164,50 @@ async def upload_file(
         "type": result["type"],
         "text": result.get("text", result.get("data")),
     }
+
+
+@app.post("/upload/async")
+async def upload_file_async(
+    session_id: str = Form(...),
+    file: UploadFile = File(...),
+):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file was selected.")
+
+    extension = Path(file.filename).suffix.lower()
+    if extension not in SUPPORTED_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=415,
+            detail="Unsupported file type. Upload PDF, CSV, Excel, PNG, JPG, or JPEG.",
+        )
+
+    content = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File is too large. Maximum size is 10 MB.")
+
+    safe_name = f"{uuid.uuid4().hex}_{Path(file.filename).name}"
+    save_path = os.path.join(UPLOAD_DIR, safe_name)
+    with open(save_path, "wb") as out_file:
+        out_file.write(content)
+
+    memory = get_or_create_session(session_id)
+    memory.set_input("file_path", save_path)
+    job_id = _start_job(session_id, "I've uploaded my financial document.")
+    return {"job_id": job_id, "status": "processing"}
+
+
+@app.get("/jobs/{job_id}")
+def get_job(job_id: str):
+    with _JOBS_LOCK:
+        job = _JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job["status"] == "failed":
+        raise HTTPException(
+            status_code=job["status_code"],
+            detail=job["error"],
+        )
+    return job
 
 
 @app.post("/reset")
