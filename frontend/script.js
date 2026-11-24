@@ -4,7 +4,7 @@
    below if your backend runs somewhere other than localhost:8000.
    ========================================================= */
 
-const API_BASE_URL = "http://localhost:8000"; // Agent 5's FastAPI base URL
+const API_BASE_URL = ""; // Same-origin deployment: use the current Hugging Face domain
 const CHAT_ENDPOINT = `${API_BASE_URL}/chat`;     // POST { session_id, message } -> { session_id, type, text }
 const UPLOAD_ENDPOINT = `${API_BASE_URL}/upload`; // POST multipart/form-data: session_id, file -> { session_id, type, text }
 const RESET_ENDPOINT = `${API_BASE_URL}/reset`;   // POST ?session_id=... -> clears that session's memory

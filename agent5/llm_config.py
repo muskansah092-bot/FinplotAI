@@ -6,7 +6,7 @@ from google import genai
 
 load_dotenv()
 
-_API_KEY = os.getenv("GEMINI_API_KEY")
+_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
 if not _API_KEY:
     raise EnvironmentError(

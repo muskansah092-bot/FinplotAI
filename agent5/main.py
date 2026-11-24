@@ -5,6 +5,7 @@ import uuid
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
 
 from agent5.session_manager import get_or_create_session, reset_session
 from agent5.orchestrator import handle_message
@@ -95,3 +96,6 @@ def reset(session_id: str):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
