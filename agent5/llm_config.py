@@ -15,8 +15,8 @@ if not _API_KEY:
 
 _client = genai.Client(api_key=_API_KEY)
 
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-FALLBACK_MODEL_NAME = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash-lite")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+FALLBACK_MODEL_NAME = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-flash-latest")
 
 # How many times to retry a call that fails due to rate limiting
 # before giving up, and how long to wait before each retry (seconds).
@@ -27,6 +27,9 @@ _RETRY_DELAYS = [2, 5, 10, 20]
 
 _RETRYABLE_MARKERS = (
     "429",
+    "404",
+    "not found",
+    "no longer available",
     "rate limit",
     "resource_exhausted",
     "quota",
