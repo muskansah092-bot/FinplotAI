@@ -9,7 +9,7 @@ personalized recommendations.
 - Deploy the FastAPI backend on Render using `render.yaml`.
 - Deploy the files in `frontend/` as a Hugging Face Static Space.
 - Set `GEMINI_API_KEY` as a secret in Render. Do not commit API keys.
-- Set `API_BASE_URL` in `frontend/script.js` to the Render service URL.
+- `frontend/script.js` is configured for `https://finplotai-api.onrender.com`.
 
 The free backend uses temporary storage. Uploaded statements and generated
 files may be lost when the service restarts; avoid uploading sensitive data.

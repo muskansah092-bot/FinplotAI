@@ -1,10 +1,9 @@
 /* =========================================================
    Finplot AI — frontend logic
-   Connected to Agent 5's real FastAPI server. See API_BASE_URL
-   below if your backend runs somewhere other than localhost:8000.
+   Connected to Agent 5's real FastAPI server on Render.
    ========================================================= */
 
-const API_BASE_URL = ""; // Same-origin deployment: use the current Hugging Face domain
+const API_BASE_URL = "https://finplotai-api.onrender.com";
 const CHAT_ENDPOINT = `${API_BASE_URL}/chat`;     // POST { session_id, message } -> { session_id, type, text }
 const UPLOAD_ENDPOINT = `${API_BASE_URL}/upload`; // POST multipart/form-data: session_id, file -> { session_id, type, text }
 const RESET_ENDPOINT = `${API_BASE_URL}/reset`;   // POST ?session_id=... -> clears that session's memory
